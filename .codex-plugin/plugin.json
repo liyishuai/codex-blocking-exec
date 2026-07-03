@@ -7,7 +7,7 @@
     "url": "https://github.com/liyishuai"
   },
   "repository": "https://github.com/liyishuai/codex-blocking-exec",
-  "license": "MIT",
+  "license": "MPL-2.0",
   "keywords": [
     "hooks",
     "bash",
