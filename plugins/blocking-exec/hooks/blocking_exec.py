@@ -40,6 +40,20 @@ def replacement_command(log_path: Path, rc: int) -> str:
     return f"cat {shlex.quote(str(log_path))}; exit {int(rc)}"
 
 
+def command_cwd(payload: dict) -> str | None:
+    tool_input = payload.get("tool_input", {})
+    if isinstance(tool_input, dict):
+        for key in ("workdir", "cwd"):
+            value = tool_input.get(key)
+            if isinstance(value, str) and value:
+                return value
+
+    value = payload.get("cwd")
+    if isinstance(value, str) and value:
+        return value
+    return None
+
+
 def main() -> int:
     payload = json.load(sys.stdin)
     if payload.get("hook_event_name") != "PreToolUse":
@@ -54,7 +68,7 @@ def main() -> int:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     job_id = f"{int(time.time())}-{os.getpid()}"
     log_path = LOG_DIR / f"{job_id}.log"
-    rc = run_blocking(command, payload.get("cwd"), log_path)
+    rc = run_blocking(command, command_cwd(payload), log_path)
 
     print(
         json.dumps(
