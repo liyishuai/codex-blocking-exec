@@ -1,6 +1,6 @@
 {
   "name": "blocking-exec",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "A hook plugin that runs Bash commands inside PreToolUse and returns one final result.",
   "author": {
     "name": "liyishuai",

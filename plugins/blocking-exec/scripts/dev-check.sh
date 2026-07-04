@@ -3,28 +3,31 @@ set -euo pipefail
 
 plugin_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 hook="$plugin_root/hooks/blocking_exec.py"
-log_dir=$(mktemp -d "${TMPDIR:-/tmp}/blocking-exec-test.XXXXXX")
+tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/blocking-exec-test.XXXXXX")
 
 cleanup() {
-  rm -rf "$log_dir"
+  rm -rf "$tmp_dir"
 }
 trap cleanup EXIT
 
 python3 -m py_compile "$hook"
 
-BLOCKING_EXEC_LOG_DIR="$log_dir" python3 - "$hook" "$plugin_root" <<'PY'
+python3 - "$hook" "$plugin_root" "$tmp_dir" <<'PY'
 import json
 import os
+from pathlib import Path
 import shlex
 import subprocess
 import sys
 
 hook = sys.argv[1]
 plugin_root = sys.argv[2]
-path_dir = os.path.join(os.environ["BLOCKING_EXEC_LOG_DIR"], "path")
+tmp_dir = sys.argv[3]
+path_dir = os.path.join(tmp_dir, "path")
 os.makedirs(path_dir, exist_ok=True)
 test_env = os.environ.copy()
 test_env["PATH"] = f"{path_dir}:{test_env.get('PATH', '')}"
+created_logs = []
 
 payload = {
     "session_id": "dev-check-session",
@@ -57,23 +60,16 @@ if specific["permissionDecision"] != "allow":
 
 replacement = specific["updatedInput"]["command"]
 replacement_args = shlex.split(replacement)
-if len(replacement_args) != 4:
+if len(replacement_args) != 8:
     raise SystemExit(f"replacement has wrong arity: {replacement!r}")
-if replacement_args[0] != "bx":
+if replacement_args[:2] != ["bx", "7"]:
     raise SystemExit(f"replacement is not a replay command: {replacement!r}")
-if replacement_args[1] != "printf blocking-exec; exit 7":
-    raise SystemExit(f"replacement does not include original command: {replacement!r}")
-if not replacement_args[2].startswith(os.environ["BLOCKING_EXEC_LOG_DIR"] + "/"):
-    raise SystemExit(f"replacement does not include log path: {replacement!r}")
-if replacement_args[3] != "7":
-    raise SystemExit(f"replacement does not include return value: {replacement!r}")
-if (
-    "__blocking_exec_replay" in replacement
-    or "block --" in replacement
-    or "blocking-exec-replay" in replacement
-    or " -- " in replacement
-    or replacement.lstrip().startswith("cat ")
-):
+if "/" in replacement_args[2]:
+    raise SystemExit(f"replacement includes a path instead of file id: {replacement!r}")
+if replacement_args[3:] != ["--", "printf", "blocking-exec;", "exit", "7"]:
+    raise SystemExit(f"replacement does not include display command: {replacement!r}")
+created_logs.append(Path("/tmp/bx") / replacement_args[2])
+if "'printf blocking-exec; exit 7'" in replacement or "/tmp/bx/" in replacement:
     raise SystemExit(f"replacement regressed to polluted replay: {replacement!r}")
 if not os.path.islink(os.path.join(path_dir, "bx")):
     raise SystemExit("hook did not expose bx on PATH")
@@ -120,10 +116,13 @@ if hook_run.returncode != 0:
 result = json.loads(hook_run.stdout)
 replacement = result["hookSpecificOutput"]["updatedInput"]["command"]
 replacement_args = shlex.split(replacement)
-if len(replacement_args) != 4:
+if len(replacement_args) != 5:
     raise SystemExit(f"cwd replacement has wrong arity: {replacement!r}")
-if replacement_args[:2] != ["bx", "pwd"]:
+if replacement_args[:2] != ["bx", "0"]:
     raise SystemExit(f"cwd replacement lost replay/original command: {replacement!r}")
+if "/" in replacement_args[2] or replacement_args[3:] != ["--", "pwd"]:
+    raise SystemExit(f"cwd replacement has bad replay args: {replacement!r}")
+created_logs.append(Path("/tmp/bx") / replacement_args[2])
 final = subprocess.run(
     ["bash", "-lc", replacement],
     stdout=subprocess.PIPE,
@@ -140,4 +139,10 @@ if final.returncode != 0 or final.stdout.strip() != plugin_root or final.stderr:
     )
 
 print("blocking-exec cwd check: ok")
+
+for log_path in created_logs:
+    try:
+        log_path.unlink()
+    except FileNotFoundError:
+        pass
 PY

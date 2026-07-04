@@ -7,9 +7,12 @@ import sys
 from pathlib import Path
 
 
+LOG_DIR = Path("/tmp/bx")
+
+
 def usage() -> int:
     print(
-        "usage: bx <original-command> <log-path> <status>",
+        "usage: bx <status> <file-id> -- <command>",
         file=sys.stderr,
     )
     return 2
@@ -23,11 +26,15 @@ def read_status(value: str) -> int:
 
 
 def main() -> int:
-    if len(sys.argv) != 4:
+    if len(sys.argv) < 4 or sys.argv[3] != "--":
         return usage()
 
-    _, _original_command, log_arg, status_arg = sys.argv
-    log_path = Path(log_arg)
+    _, status_arg, file_id, _separator, *_command = sys.argv
+    if Path(file_id).name != file_id or file_id in {"", ".", ".."}:
+        print(f"bx: invalid file id: {file_id}", file=sys.stderr)
+        return 2
+
+    log_path = LOG_DIR / file_id
     try:
         with log_path.open("rb") as log:
             sys.stdout.buffer.write(log.read())

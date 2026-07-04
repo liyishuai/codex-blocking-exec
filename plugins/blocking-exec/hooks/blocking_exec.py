@@ -17,8 +17,9 @@ import sys
 from pathlib import Path
 
 
-LOG_DIR = Path(os.environ.get("BLOCKING_EXEC_LOG_DIR", "/tmp/bx"))
+LOG_DIR = Path("/tmp/bx")
 REPLAY_COMMAND = "bx"
+SHELL_DISPLAY_ESCAPES = set("\\'\"`$;&|()<>*?[]{}!#~")
 
 
 def run_blocking(command: str, cwd: str | None, log_path: Path) -> int:
@@ -64,23 +65,40 @@ def replay_command() -> str:
     return str(source)
 
 
-def replacement_command(original_command: str, log_path: Path, rc: int) -> str:
+def display_command(command: str) -> str:
+    result: list[str] = []
+    for char in command:
+        if char == "\n":
+            result.append("\\n")
+        elif char == "\r":
+            result.append("\\r")
+        elif char == "\t":
+            result.append(" ")
+        elif char in SHELL_DISPLAY_ESCAPES:
+            result.append(f"\\{char}")
+        else:
+            result.append(char)
+    return "".join(result)
+
+
+def replacement_command(original_command: str, log_id: str, rc: int) -> str:
     return " ".join(
         [
             shlex.quote(replay_command()),
-            shlex.quote(original_command),
-            shlex.quote(str(log_path)),
             str(int(rc)),
+            shlex.quote(log_id),
+            "--",
+            display_command(original_command),
         ]
     )
 
 
-def new_log_path() -> Path:
+def new_log_id() -> str:
     for _ in range(16):
-        path = LOG_DIR / secrets.token_hex(4)
-        if not path.exists():
-            return path
-    return LOG_DIR / secrets.token_hex(8)
+        log_id = secrets.token_hex(4)
+        if not (LOG_DIR / log_id).exists():
+            return log_id
+    return secrets.token_hex(8)
 
 
 def command_cwd(payload: dict) -> str | None:
@@ -109,7 +127,8 @@ def main() -> int:
         return 0
 
     LOG_DIR.mkdir(parents=True, exist_ok=True)
-    log_path = new_log_path()
+    log_id = new_log_id()
+    log_path = LOG_DIR / log_id
     rc = run_blocking(command, command_cwd(payload), log_path)
 
     print(
@@ -119,7 +138,7 @@ def main() -> int:
                     "hookEventName": "PreToolUse",
                     "permissionDecision": "allow",
                     "updatedInput": {
-                        "command": replacement_command(command, log_path, rc)
+                        "command": replacement_command(command, log_id, rc)
                     },
                 }
             },
