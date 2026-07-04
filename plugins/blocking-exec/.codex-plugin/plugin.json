@@ -1,0 +1,29 @@
+{
+  "name": "blocking-exec",
+  "version": "0.1.0",
+  "description": "A hook plugin that runs Bash commands inside PreToolUse and returns one final result.",
+  "author": {
+    "name": "liyishuai",
+    "url": "https://github.com/liyishuai"
+  },
+  "repository": "https://github.com/liyishuai/codex-marketplace",
+  "license": "MPL-2.0",
+  "keywords": [
+    "hooks",
+    "bash",
+    "long-running-commands"
+  ],
+  "interface": {
+    "displayName": "Blocking Exec",
+    "shortDescription": "Block inside a hook for Bash commands.",
+    "longDescription": "Blocking Exec ships a PreToolUse hook that intercepts Bash commands, runs the original command synchronously inside the hook, captures combined output, and rewrites the Bash tool call to replay that output with the final exit code.",
+    "developerName": "liyishuai",
+    "category": "Productivity",
+    "capabilities": [
+      "Hooks"
+    ],
+    "defaultPrompt": [
+      "Run this long command through Blocking Exec."
+    ]
+  }
+}

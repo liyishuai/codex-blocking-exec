@@ -17,7 +17,7 @@ import time
 from pathlib import Path
 
 
-LOG_DIR = Path(os.environ.get("CODEX_BLOCK_LOG_DIR", "/tmp/codex-blocking-exec"))
+LOG_DIR = Path(os.environ.get("BLOCKING_EXEC_LOG_DIR", "/tmp/blocking-exec"))
 
 
 def run_blocking(command: str, cwd: str | None, log_path: Path) -> int:

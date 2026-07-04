@@ -5,10 +5,10 @@
   },
   "plugins": [
     {
-      "name": "codex-blocking-exec",
+      "name": "blocking-exec",
       "source": {
         "source": "local",
-        "path": "./plugins/codex-blocking-exec"
+        "path": "./plugins/blocking-exec"
       },
       "policy": {
         "installation": "AVAILABLE",

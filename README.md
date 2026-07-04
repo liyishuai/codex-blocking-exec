@@ -9,7 +9,7 @@ Add the marketplace and install the plugin:
 
 ```bash
 codex plugin marketplace add liyishuai/codex-marketplace
-codex plugin add codex-blocking-exec@codex-marketplace
+codex plugin add blocking-exec@codex-marketplace
 ```
 
 Then open the Codex plugin UI, enable the plugin, and review and trust its hook
@@ -17,11 +17,11 @@ definition. Codex does not automatically trust hooks bundled by plugins.
 
 ## Plugins
 
-### Codex Blocking Exec
+### Blocking Exec
 
-`codex-blocking-exec` ships a `PreToolUse` hook for Bash. When Codex calls Bash,
+`blocking-exec` ships a `PreToolUse` hook for Bash. When Codex calls Bash,
 the hook runs the original command synchronously, writes combined stdout/stderr
-to `/tmp/codex-blocking-exec`, and rewrites the Bash tool call to replay that
+to `/tmp/blocking-exec`, and rewrites the Bash tool call to replay that
 captured output with the command's original exit code.
 
 This is useful for long-running commands where Codex's normal command-yield loop
@@ -38,7 +38,7 @@ Notes:
 ```text
 .agents/plugins/marketplace.json
 plugins/
-  codex-blocking-exec/
+  blocking-exec/
     .codex-plugin/plugin.json
     hooks/
       blocking_exec.py
@@ -50,7 +50,7 @@ plugins/
 Check the hook script after changes:
 
 ```bash
-python3 -m py_compile plugins/codex-blocking-exec/hooks/blocking_exec.py
+python3 -m py_compile plugins/blocking-exec/hooks/blocking_exec.py
 ```
 
 Test the marketplace install path from a clean Codex home:
@@ -58,6 +58,6 @@ Test the marketplace install path from a clean Codex home:
 ```bash
 tmp_home=$(mktemp -d)
 HOME="$tmp_home" codex plugin marketplace add "$(pwd)"
-HOME="$tmp_home" codex plugin add codex-blocking-exec@codex-marketplace
+HOME="$tmp_home" codex plugin add blocking-exec@codex-marketplace
 rm -rf "$tmp_home"
 ```
